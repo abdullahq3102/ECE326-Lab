@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Search Engine</title>
+</head>
+<body>
+    <h1>Welcome to My Search Engine</h1>
+
+    <form action="/results" method="get">
+        <input type="text" name="keywords" placeholder="Enter search query">
+        <button type="submit">Search</button>
+    </form>
+
+    <h2>Top 20 Searched Keywords</h2>
+    <table border="1">
+        <tr>
+            <th>Keyword</th>
+            <th>Search Count</th>
+        </tr>
+        % for word, count in history:
+        <tr>
+            <td>{{word}}</td>
+            <td>{{count}}</td>
+        </tr>
+        % end
+    </table>
+</body>
+</html>

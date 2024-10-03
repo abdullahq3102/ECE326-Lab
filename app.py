@@ -35,4 +35,4 @@ def results():
     return template('templates/results.html', query=query, word_count=word_count)
 
 # Run the server
-run(host='localhost', port=8080, debug=True)
+run(host='localhost', port=8081, debug=True)

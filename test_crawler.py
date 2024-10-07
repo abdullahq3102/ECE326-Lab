@@ -51,7 +51,7 @@ class TestCrawler(unittest.TestCase):
         self.assertEqual(self.crawler._document_index[doc_id], url)
 
     def test_inverted_index(self):
-        # Simulate adding words to the inverted index
+        # Test adding words to the inverted index
         word1 = 'test'
         word2 = 'crawler'
         self.crawler._curr_doc_id = 1  # Set the current document ID

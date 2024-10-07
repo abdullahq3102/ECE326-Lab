@@ -1,4 +1,4 @@
-from bottle import route, run, request, template, redirect
+from bottle import route, run, request, template, redirect, static_file
 
 # In-memory storage for search history and word counts
 history = {}
@@ -15,6 +15,11 @@ def process_query(query):
         history[word] = history.get(word, 0) + 1
 
     return word_count
+
+# get logo
+@route('/static/<filename>')
+def serve_static(filename):
+    return static_file(filename, root='./static')
 
 # Home Page (Search Page)
 @route('/')

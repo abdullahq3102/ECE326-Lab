@@ -354,6 +354,7 @@ class crawler(object):
     
     def get_resolved_inverted_index(self):
         """Get the inverted index with word ids replaced with words and all of its urls."""
+        # Uses word id cache instead fo lexicon because lexicon is for searching via frontend(word -> word id) and word_id_cache is for searching via backend(word id -> word)
         resolved_index = {}
         for word_id, doc_ids in self._inverted_index.items():
             resolved_index[self._word_id_cache[word_id]] = [self._document_index[doc_id] for doc_id in doc_ids]

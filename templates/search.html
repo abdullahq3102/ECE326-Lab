@@ -23,19 +23,6 @@
         </ul>
     % else:
         <p><a href="/login">Login with Google</a></p>
-        <h2>Top 20 Searched Keywords</h2>
-        <table border="1">
-            <tr>
-                <th>Keyword</th>
-                <th>Search Count</th>
-            </tr>
-            % for word, count in history:
-            <tr>
-                <td>{{word}}</td>
-                <td>{{count}}</td>
-            </tr>
-            % end
-        </table>
     % end
 
     <!-- Search Form -->

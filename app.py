@@ -4,14 +4,19 @@ from googleapiclient.discovery import build
 from beaker.middleware import SessionMiddleware
 import json
 import httplib2
+import os
 import bottle
+
 # Load Google OAuth secrets
-with open("oathSecrets.json") as f:
+with open("oauthSecrets.json") as f:
     secrets = json.load(f)
 CLIENT_ID = secrets["web"]["client_id"]
 CLIENT_SECRET = secrets["web"]["client_secret"]
 
-# In-memory storage for anonymous search history and session management
+# Define path for persistent user data storage
+HISTORY_FILE = "user_search_history.json"
+
+# Initialize in-memory history for anonymous users and session management
 history = {}
 session_opts = {
     'session.type': 'memory',
@@ -19,6 +24,20 @@ session_opts = {
     'session.auto': True
 }
 app = SessionMiddleware(bottle.app(), session_opts)
+
+# Function to load history from file
+def load_history():
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+# Function to save history to file
+def save_history(user_email, search_history):
+    all_history = load_history()
+    all_history[user_email] = search_history
+    with open(HISTORY_FILE, 'w') as f:
+        json.dump(all_history, f)
 
 # Function to process query
 def process_query(query):
@@ -45,14 +64,13 @@ def home():
         return template('templates/search.html', history=session.get('user_history', []), user_email=user_email)
     else:
         # Anonymous mode
-        sorted_history = sorted(history.items(), key=lambda x: x[1], reverse=True)[:20]
-        return template('templates/search.html', history=sorted_history, user_email=None)
+        return template('templates/search.html', history=None, user_email=None)
 
 # Google Login
 @route('/login')
 def login():
     flow = flow_from_clientsecrets(
-        'oathSecrets.json',
+        'oauthSecrets.json',
         scope='https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
         redirect_uri='http://localhost:8081/redirect'
     )
@@ -65,7 +83,7 @@ def redirect_page():
     session = request.environ.get('beaker.session')
     code = request.query.get('code')
     flow = flow_from_clientsecrets(
-        'oathSecrets.json',
+        'oauthSecrets.json',
         scope='https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
         redirect_uri='http://localhost:8081/redirect'
     )
@@ -74,8 +92,11 @@ def redirect_page():
     oauth_service = build('oauth2', 'v2', http=http_auth)
     user_info = oauth_service.userinfo().get().execute()
 
-    session['user_email'] = user_info.get('email')
-    session['user_history'] = []
+    # Get user email and load existing history or initialize new history
+    user_email = user_info.get('email')
+    session['user_email'] = user_email
+    all_history = load_history()
+    session['user_history'] = all_history.get(user_email, [])
     session.save()
 
     redirect('/')
@@ -95,6 +116,7 @@ def results():
         user_history = session.get('user_history', [])
         user_history.insert(0, query)  # Add latest search to history
         session['user_history'] = user_history[:10]  # Keep only the last 10 searches
+        save_history(session['user_email'], session['user_history'])  # Persist to file
         session.save()
 
     return template('templates/results.html', query=query, word_count=word_count, user_email=session.get('user_email'))

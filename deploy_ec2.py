@@ -40,11 +40,24 @@ def launch_instance(security_group_id):
         MaxCount=1,
         SecurityGroupIds=[security_group_id],
         UserData='''#!/bin/bash
+        # Update package manager and install Python3
         sudo yum update -y
         sudo yum install -y python3 git
+
+        # Install pip if it is not installed
+        curl -O https://bootstrap.pypa.io/get-pip.py
+        sudo python3 get-pip.py
+
+        # Clone the repository
         git clone https://github.com/abdullahq3102/ECE326-Lab
 
+        # Change directory to the cloned repository
+        cd ECE326-Lab
+
+        # Install project dependencies
         pip3 install -r requirements.txt
+
+        # Run the application in the background
         nohup python3 app.py > output.log 2>&1 &
         ''',
         TagSpecifications=[{'ResourceType': 'instance', 'Tags': [{'Key': 'Name', 'Value': 'ECE326_Lab2_Instance'}]}]

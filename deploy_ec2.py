@@ -9,7 +9,7 @@ client = boto3.client('ec2', region_name='us-east-1')
 def create_security_group():
     try:
         response = client.create_security_group(
-            GroupName='ece326-group-v3',
+            GroupName='ece326-group25',
             Description='Security group for ECE326 Lab deployment'
         )
         security_group_id = response['GroupId']
@@ -21,7 +21,7 @@ def create_security_group():
                 {'IpProtocol': 'icmp', 'FromPort': -1, 'ToPort': -1, 'IpRanges': [{'CidrIp': '0.0.0.0/0'}]},
                 {'IpProtocol': 'tcp', 'FromPort': 22, 'ToPort': 22, 'IpRanges': [{'CidrIp': '0.0.0.0/0'}]},
                 {'IpProtocol': 'tcp', 'FromPort': 80, 'ToPort': 80, 'IpRanges': [{'CidrIp': '0.0.0.0/0'}]},
-                {'IpProtocol': 'tcp', 'FromPort': 8081, 'ToPort': 8081, 'IpRanges': [{'CidrIp': '0.0.0.0/0'}]}
+                {'IpProtocol': 'tcp', 'FromPort': 8082, 'ToPort': 8082, 'IpRanges': [{'CidrIp': '0.0.0.0/0'}]}
             ]
         )
         print(f"Security Group {security_group_id} created and configured.")
@@ -42,7 +42,7 @@ def launch_instance(security_group_id):
         UserData='''#!/bin/bash
         sudo yum update -y
         sudo yum install -y python3 git
-        git clone https://github.com/abdullahq3102/ECE326-Lab  # Replace with your repository URL
+        git clone https://github.com/abdullahq3102/ECE326-Lab
 
         pip3 install -r requirements.txt
         nohup python3 app.py > output.log 2>&1 &
@@ -61,7 +61,7 @@ def main():
     security_group_id = create_security_group()
     if security_group_id:
         public_ip = launch_instance(security_group_id)
-        print(f"Application deployed and accessible at http://{public_ip}:8081")
+        print(f"Application deployed and accessible at http://{public_ip}:8082")
 
 if __name__ == "__main__":
     main()

@@ -12,9 +12,13 @@
         Qureshi-Wang Search Engine
     </h1>
 
-    <!-- Login or Logout Section -->
+    <!-- Logout Button for Logged-In Users -->
     % if user_email:
         <p>Welcome, {{user_email}}! <a href="/logout">Logout</a></p>
+    % end
+
+    <!-- Login or Recent Searches Section -->
+    % if user_email:
         <h2>Your Recent Searches</h2>
         <ul>
             % for search in history:

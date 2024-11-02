@@ -8,6 +8,11 @@
 <body>
     <h1>Search Results for "{{query}}"</h1>
 
+    <!-- Display user email if logged in -->
+    % if user_email:
+        <p>Logged in as: {{user_email}}</p>
+    % end
+
     <table border="1">
         <tr>
             <th>Word</th>

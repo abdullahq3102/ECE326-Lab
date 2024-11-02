@@ -8,27 +8,40 @@
 </head>
 <body>
     <h1>
-        <img src="/static/QW_logo.jpg" alt="QW Logo" style="height: 50px;; vertical-align:middle;">
+        <img src="/static/QW_logo.jpg" alt="QW Logo" style="height: 50px; vertical-align:middle;">
         Qureshi-Wang Search Engine
     </h1>
 
+    <!-- Login or Logout Section -->
+    % if user_email:
+        <p>Welcome, {{user_email}}! <a href="/logout">Logout</a></p>
+        <h2>Your Recent Searches</h2>
+        <ul>
+            % for search in history:
+            <li>{{search}}</li>
+            % end
+        </ul>
+    % else:
+        <p><a href="/login">Login with Google</a></p>
+        <h2>Top 20 Searched Keywords</h2>
+        <table border="1">
+            <tr>
+                <th>Keyword</th>
+                <th>Search Count</th>
+            </tr>
+            % for word, count in history:
+            <tr>
+                <td>{{word}}</td>
+                <td>{{count}}</td>
+            </tr>
+            % end
+        </table>
+    % end
+
+    <!-- Search Form -->
     <form action="/results" method="get">
         <input type="text" name="keywords" placeholder="Enter search query">
         <button type="submit">Search</button>
     </form>
-
-    <h2>Top 20 Searched Keywords</h2>
-    <table border="1">
-        <tr>
-            <th>Keyword</th>
-            <th>Search Count</th>
-        </tr>
-        % for word, count in history:
-        <tr>
-            <td>{{word}}</td>
-            <td>{{count}}</td>
-        </tr>
-        % end
-    </table>
 </body>
 </html>

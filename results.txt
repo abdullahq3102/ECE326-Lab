@@ -63,26 +63,6 @@ This is ApacheBench, Version 2.3 <$Revision: 1913912 $>
 Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
 Licensed to The Apache Software Foundation, http://www.apache.org/
 
-Benchmarking 54.160.252.208 (be patient)...Total of 96 requests completed
-
-CPU usage during benchmark:
-Linux 6.1.112-122.189.amzn2023.x86_64 (ip-172-31-19-171.ec2.internal) 	11/03/24 	_x86_64_	(1 CPU)
-
-22:59:29        CPU     %user     %nice   %system   %iowait    %steal     %idle
-22:59:30        all      0.00      0.00      0.00      0.00      0.00    100.00
-22:59:31        all      0.00      0.00      0.00      0.00      2.91     97.09
-22:59:32        all      0.00      0.00      0.00      0.00      4.76     95.24
-22:59:33        all      0.00      0.00      0.00      0.00      4.76     95.24
-22:59:34        all      0.00      0.00      0.00      0.00      0.00    100.00
-Average:        all      0.00      0.00      0.00      0.00      2.54     97.46
-
-========================================
-
-Benchmark results for http://54.160.252.208:8082/results?keywords=hi:
-This is ApacheBench, Version 2.3 <$Revision: 1913912 $>
-Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
-Licensed to The Apache Software Foundation, http://www.apache.org/
-
 Benchmarking 54.160.252.208 (be patient).....done
 
 

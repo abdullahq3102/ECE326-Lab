@@ -2,7 +2,7 @@ import boto3
 import time
 import paramiko
 
-# Initialize AWS session
+
 ec2 = boto3.resource('ec2', region_name='us-east-1')
 client = boto3.client('ec2', region_name='us-east-1')
 
@@ -25,7 +25,7 @@ def create_security_group():
         )
         security_group_id = response['GroupId']
 
-        # Configure Security Group Ingress Rules
+        
         client.authorize_security_group_ingress(
             GroupId=security_group_id,
             IpPermissions=[
@@ -40,9 +40,9 @@ def create_security_group():
 
 def launch_benchmark_instance(security_group_id):
     instances = ec2.create_instances(
-        ImageId='ami-06b21ccaeff8cd686',  # Amazon Linux 2 AMI
+        ImageId='ami-06b21ccaeff8cd686',  
         InstanceType='t2.micro',
-        KeyName='ECE326_lab',  # Ensure this is your existing key pair name
+        KeyName='ECE326_lab',  
         MinCount=1,
         MaxCount=1,
         SecurityGroupIds=[security_group_id],
@@ -66,24 +66,28 @@ def launch_benchmark_instance(security_group_id):
     return instance.public_ip_address, instance
 
 def run_benchmark(ssh_client, target_url):
-    # Run Apache Bench and monitoring tools on the target URL
+    
     benchmark_command = f"ab -n 100 -c 10 {target_url} > benchmark_results.txt"
-    cpu_command = "sar -u 1 5 > cpu_usage.txt"  # Run sysstat for CPU utilization over 5 seconds
+    cpu_command = "sar -u 1 5 > cpu_usage.txt"  
 
-    # Execute the benchmark and CPU usage commands
+    
     print(f"Running benchmark on {target_url}...")
-    ssh_client.exec_command(benchmark_command)
-    ssh_client.exec_command(cpu_command)
+    stdin, stdout, stderr = ssh_client.exec_command(benchmark_command)
+    stdout.channel.recv_exit_status()  
 
-    # Retrieve benchmark results
+    
+    stdin, stdout, stderr = ssh_client.exec_command(cpu_command)
+    stdout.channel.recv_exit_status()  
+
+    
     stdin, stdout, stderr = ssh_client.exec_command("cat benchmark_results.txt")
     benchmark_results = stdout.read().decode()
 
-    # Retrieve CPU usage log
+    
     stdin, stdout, stderr = ssh_client.exec_command("cat cpu_usage.txt")
     cpu_usage = stdout.read().decode()
 
-    # Write results to file
+    
     with open("results.txt", "a") as f:
         f.write(f"\nBenchmark results for {target_url}:\n")
         f.write(benchmark_results)
@@ -93,7 +97,8 @@ def run_benchmark(ssh_client, target_url):
 
     print(f"Results for {target_url} appended to results.txt.")
 
-# Main function
+
+
 def main():
     security_group_id = create_security_group()
     if not security_group_id:
@@ -102,12 +107,12 @@ def main():
 
     public_ip, instance = launch_benchmark_instance(security_group_id)
 
-    # Wait for instance setup to complete
+    
     print("Waiting for instance to initialize...")
     time.sleep(60)
 
-    # Connect to the instance
-    key = paramiko.RSAKey.from_private_key_file("ECE326_lab.pem")  # Ensure correct path
+    
+    key = paramiko.RSAKey.from_private_key_file("ECE326_lab.pem")  
     ssh_client = paramiko.SSHClient()
     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
@@ -120,7 +125,7 @@ def main():
             print(f"SSH connection failed: {e}, retrying in 10 seconds...")
             time.sleep(10)
 
-    # Run benchmarks in a loop until the user decides to stop
+    
     while True:
         target_url = input("Enter the target URL to benchmark (or type 'exit' to quit): ")
         if target_url.lower() == "exit":
@@ -128,7 +133,7 @@ def main():
             break
         run_benchmark(ssh_client, target_url)
 
-    # Close SSH connection after benchmarking
+    
     ssh_client.close()
     print("SSH session closed. Benchmarking complete.")
 

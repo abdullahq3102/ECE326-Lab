@@ -72,7 +72,7 @@ def login():
     flow = flow_from_clientsecrets(
         'oauthSecrets.json',
         scope='https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
-        redirect_uri='http://localhost:8081/redirect'
+        redirect_uri='http://localhost:8082/redirect'
     )
     auth_uri = flow.step1_get_authorize_url()
     redirect(auth_uri)
@@ -85,7 +85,7 @@ def redirect_page():
     flow = flow_from_clientsecrets(
         'oauthSecrets.json',
         scope='https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
-        redirect_uri='http://localhost:8081/redirect'
+        redirect_uri='http://localhost:8082/redirect'
     )
     credentials = flow.step2_exchange(code)
     http_auth = credentials.authorize(httplib2.Http())

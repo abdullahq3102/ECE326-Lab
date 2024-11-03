@@ -13,6 +13,7 @@ run unit tests via `python -m unittest test_crawler.py`
 # Lab 2
 Currently being hosted on http://54.160.252.208:8082/
 ## For running web server
+make sure to configure your aws CLI to create the security group
 run ec2 instance with `python deploy_ec2.py`
 It will put the link to the frontend in the terminal
 

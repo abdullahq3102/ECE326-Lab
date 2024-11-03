@@ -6,3 +6,4 @@ boto3
 httplib2
 paramiko
 scp
+awscli

@@ -1,0 +1,116 @@
+
+Benchmark results for http://54.160.252.208:8082/:
+This is ApacheBench, Version 2.3 <$Revision: 1913912 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 54.160.252.208 (be patient).....done
+
+
+Server Software:        WSGIServer/0.2
+Server Hostname:        54.160.252.208
+Server Port:            8082
+
+Document Path:          /
+Document Length:        785 bytes
+
+Concurrency Level:      10
+Time taken for tests:   0.227 seconds
+Complete requests:      100
+Failed requests:        0
+Total transferred:      106700 bytes
+HTML transferred:       78500 bytes
+Requests per second:    440.64 [#/sec] (mean)
+Time per request:       22.694 [ms] (mean)
+Time per request:       2.269 [ms] (mean, across all concurrent requests)
+Transfer rate:          459.14 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    1   0.3      0       1
+Processing:     1    9  30.4      5     221
+Waiting:        1    9  30.4      5     221
+Total:          2   10  30.5      6     223
+ERROR: The median and mean for the initial connection time are more than twice the standard
+       deviation apart. These results are NOT reliable.
+
+Percentage of the requests served within a certain time (ms)
+  50%      6
+  66%      6
+  75%      6
+  80%      6
+  90%      6
+  95%      6
+  98%    222
+  99%    223
+ 100%    223 (longest request)
+
+CPU usage during benchmark:
+Linux 6.1.112-122.189.amzn2023.x86_64 (ip-172-31-19-171.ec2.internal) 	11/03/24 	_x86_64_	(1 CPU)
+
+22:57:30        CPU     %user     %nice   %system   %iowait    %steal     %idle
+22:57:31        all      0.00      0.00      0.00      0.00      8.26     91.74
+22:57:32        all      0.00      0.00      0.00      0.00      2.94     97.06
+22:57:33        all      0.00      0.00      0.00      0.00      2.91     97.09
+22:57:34        all      0.00      0.00      0.00      0.00      5.66     94.34
+22:57:35        all      0.00      0.00      0.00      0.00      7.41     92.59
+Average:        all      0.00      0.00      0.00      0.00      5.49     94.51
+
+========================================
+
+Benchmark results for http://54.160.252.208:8082/results?keywords=hi:
+This is ApacheBench, Version 2.3 <$Revision: 1913912 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 54.160.252.208 (be patient).....done
+
+
+Server Software:        WSGIServer/0.2
+Server Hostname:        54.160.252.208
+Server Port:            8082
+
+Document Path:          /results?keywords=hi
+Document Length:        519 bytes
+
+Concurrency Level:      10
+Time taken for tests:   0.289 seconds
+Complete requests:      100
+Failed requests:        0
+Total transferred:      80100 bytes
+HTML transferred:       51900 bytes
+Requests per second:    346.27 [#/sec] (mean)
+Time per request:       28.879 [ms] (mean)
+Time per request:       2.888 [ms] (mean, across all concurrent requests)
+Transfer rate:          270.86 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    6   8.1      1      20
+Processing:     1   18  44.5      5     234
+Waiting:        1   18  44.5      5     234
+Total:          4   24  47.3      5     251
+
+Percentage of the requests served within a certain time (ms)
+  50%      5
+  66%     22
+  75%     25
+  80%     33
+  90%     40
+  95%     40
+  98%    246
+  99%    251
+ 100%    251 (longest request)
+
+CPU usage during benchmark:
+Linux 6.1.112-122.189.amzn2023.x86_64 (ip-172-31-19-171.ec2.internal) 	11/03/24 	_x86_64_	(1 CPU)
+
+23:01:47        CPU     %user     %nice   %system   %iowait    %steal     %idle
+23:01:48        all      0.00      0.00      0.00      0.00     13.04     86.96
+23:01:49        all      0.00      0.00      0.00      0.00     11.50     88.50
+23:01:50        all      0.00      0.00      0.00      0.00      3.85     96.15
+23:01:51        all      0.00      0.00      0.00      0.00      3.85     96.15
+23:01:52        all      0.00      0.00      0.00      0.00      0.00    100.00
+Average:        all      0.00      0.00      0.00      0.00      6.73     93.27
+
+========================================

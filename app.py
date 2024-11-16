@@ -135,7 +135,7 @@ def results():
     first_word = query.split()[0].lower()
 
     # Fetch the word_id from Lexicon
-    cur = bot.db_conn.cursor()
+    cur = db_conn.cursor()
     cur.execute("SELECT id FROM Lexicon WHERE word = ?", (first_word,))
     word_id_row = cur.fetchone()
 
@@ -147,14 +147,13 @@ def results():
             total_results=0,
             current_page=page,
             total_pages=0,
-            user_email=session.get('user_email')
         )
 
-    word_id = word_id_row[0]
+    word_id = word_id_row['id']
 
     # Fetch all doc_ids for the word_id from InvertedIndex
     cur.execute("SELECT doc_id FROM InvertedIndex WHERE word_id = ?", (word_id,))
-    doc_ids = [row[0] for row in cur.fetchall()]
+    doc_ids = [row['doc_id'] for row in cur.fetchall()]
 
     if not doc_ids:
         return template(

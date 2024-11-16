@@ -1,4 +1,4 @@
-from bottle import route, run, request, template, redirect, static_file
+from bottle import route, run, request, template, redirect, static_file, error
 from oauth2client.client import flow_from_clientsecrets, OAuth2Credentials
 from googleapiclient.discovery import build
 from beaker.middleware import SessionMiddleware
@@ -6,6 +6,13 @@ import json
 import httplib2
 import os
 import bottle
+import sqlite3
+
+
+# Global database connection
+db_conn = sqlite3.connect("crawler_data.db")
+db_conn.row_factory = sqlite3.Row  # Access columns by name
+
 
 with open("oauthSecrets.json") as f:
     secrets = json.load(f)
@@ -91,29 +98,113 @@ def redirect_page():
 
     redirect('/')
 
-@route('/results')
-def results():
-    session = request.environ.get('beaker.session')
-    query = request.query.keywords
-    if not query:
-        redirect('/')
+# @route('/results')
+# def results():
+#     session = request.environ.get('beaker.session')
+#     query = request.query.keywords
+#     if not query:
+#         redirect('/')
 
-    word_count = process_query(query)
+#     word_count = process_query(query)
 
-    if session.get('user_email'):
-        user_history = session.get('user_history', [])
-        user_history.insert(0, query) 
-        session['user_history'] = user_history[:10] 
-        save_history(session['user_email'], session['user_history']) 
-        session.save()
+#     if session.get('user_email'):
+#         user_history = session.get('user_history', [])
+#         user_history.insert(0, query) 
+#         session['user_history'] = user_history[:10] 
+#         save_history(session['user_email'], session['user_history']) 
+#         session.save()
 
-    return template('templates/results.html', query=query, word_count=word_count, user_email=session.get('user_email'))
+#     return template('templates/results.html', query=query, word_count=word_count, user_email=session.get('user_email'))
 
 @route('/logout')
 def logout():
     session = request.environ.get('beaker.session')
     session.delete() 
     redirect('/')
+    
+@route('/results')
+def results():
+    session = request.environ.get('beaker.session')
+    query = request.query.keywords
+    page = int(request.query.page or 1)  # Default to page 1 if no page parameter
+
+    if not query:
+        redirect('/')
+
+    # Use only the first word from the query
+    first_word = query.split()[0].lower()
+
+    # Fetch the word_id from Lexicon
+    cur = bot.db_conn.cursor()
+    cur.execute("SELECT id FROM Lexicon WHERE word = ?", (first_word,))
+    word_id_row = cur.fetchone()
+
+    if not word_id_row:
+        return template(
+            'templates/results.html',
+            query=query,
+            results=[],
+            total_results=0,
+            current_page=page,
+            total_pages=0,
+            user_email=session.get('user_email')
+        )
+
+    word_id = word_id_row[0]
+
+    # Fetch all doc_ids for the word_id from InvertedIndex
+    cur.execute("SELECT doc_id FROM InvertedIndex WHERE word_id = ?", (word_id,))
+    doc_ids = [row[0] for row in cur.fetchall()]
+
+    if not doc_ids:
+        return template(
+            'templates/results.html',
+            query=query,
+            results=[],
+            total_results=0,
+            current_page=page,
+            total_pages=0,
+            user_email=session.get('user_email')
+        )
+
+    # Fetch URLs, titles, and PageRank scores for the doc_ids
+    placeholders = ', '.join('?' for _ in doc_ids)
+    cur.execute(f"""
+        SELECT DocumentIndex.url, DocumentIndex.title, PageRank.score
+        FROM DocumentIndex
+        JOIN PageRank ON DocumentIndex.id = PageRank.doc_id
+        WHERE DocumentIndex.id IN ({placeholders})
+        ORDER BY PageRank.score DESC
+        """, doc_ids)
+    all_results = cur.fetchall()
+
+    # Pagination logic
+    results_per_page = 5
+    total_results = len(all_results)
+    total_pages = (total_results + results_per_page - 1) // results_per_page
+    start_index = (page - 1) * results_per_page
+    end_index = start_index + results_per_page
+    results = all_results[start_index:end_index]
+
+    return template(
+        'templates/results.html',
+        query=query,
+        results=results,
+        total_results=total_results,
+        current_page=page,
+        total_pages=total_pages,
+        user_email=session.get('user_email')
+    )
+
+@error(404)
+def error404(error):
+    return template(
+        'templates/error.html',
+        message="The page you are looking for does not exist.",
+        home_url="/"
+    )
+
 
 if __name__ == "__main__":
-    run(app=app, host='0.0.0.0', port=8082, debug=True)
+    # run(app=app, host='0.0.0.0', port=8082, debug=True)
+    run(app=app, host='localhost', port=8082, debug=True)

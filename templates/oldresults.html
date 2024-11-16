@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results</title>
+</head>
+<body>
+    <!-- Logout Button for Logged-In Users -->
+    % if user_email:
+        <p>Logged in as: {{user_email}} <a href="/logout">Logout</a></p>
+    % end
+
+    <h1>Search Results for "{{query}}"</h1>
+
+    <table border="1">
+        <tr>
+            <th>Word</th>
+            <th>Count</th>
+        </tr>
+        % for word, count in word_count.items():
+        <tr>
+            <td>{{word}}</td>
+            <td>{{count}}</td>
+        </tr>
+        % end
+    </table>
+
+    <a href="/">Back to Search</a>
+</body>
+</html>

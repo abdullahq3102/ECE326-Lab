@@ -13,18 +13,35 @@
 
     <h1>Search Results for "{{query}}"</h1>
 
-    <table border="1">
-        <tr>
-            <th>Word</th>
-            <th>Count</th>
-        </tr>
-        % for word, count in word_count.items():
-        <tr>
-            <td>{{word}}</td>
-            <td>{{count}}</td>
-        </tr>
-        % end
-    </table>
+    % if not results:
+        <p>No results found for "{{query}}".</p>
+    % else:
+        <p>Showing {{current_page}} of {{total_pages}} pages ({{total_results}} results).</p>
+        <table border="1">
+            <tr>
+                <th>Title</th>
+                <th>URL</th>
+                <th>PageRank Score</th>
+            </tr>
+            % for url, title, score in results:
+            <tr>
+                <td>{{title}}</td>
+                <td><a href="{{url}}">{{url}}</a></td>
+                <td>{{'%.4f' % score}}</td>
+            </tr>
+            % end
+        </table>
+
+        <!-- Pagination -->
+        <div>
+            % if current_page > 1:
+                <a href="/results?keywords={{query}}&page={{current_page-1}}">Previous</a>
+            % end
+            % if current_page < total_pages:
+                <a href="/results?keywords={{query}}&page={{current_page+1}}">Next</a>
+            % end
+        </div>
+    % end
 
     <a href="/">Back to Search</a>
 </body>

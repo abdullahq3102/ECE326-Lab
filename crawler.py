@@ -23,7 +23,8 @@ from urllib.request import urlopen
 from bs4 import BeautifulSoup, Tag
 from collections import defaultdict
 import re
-
+import os
+import sqlite3
 
 def attr(elem, attr):
     """An html attribute from an html element. E.g. <a href="">, then
@@ -43,17 +44,84 @@ class crawler(object):
 
     This crawler keeps track of font sizes and makes it simpler to manage word
     ids and document ids."""
+    
+    def initialize_database(self, db_path="crawler_data.db"):
+        """Initialize the database with required tables if it doesn't exist."""
+        if not os.path.exists(db_path):
+            print(f"Database file '{db_path}' does not exist. Creating...")
+            open(db_path, 'w').close()  # Create an empty file
+            print(f"Database file '{db_path}' created.")
+        
+        # Connect to the database and initialize tables
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
 
-    def __init__(self, db_conn, url_file):
+        # Create tables if they do not exist
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS Lexicon (
+            id INTEGER PRIMARY KEY,
+            word TEXT UNIQUE
+        );
+        """)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS DocumentIndex (
+            id INTEGER PRIMARY KEY,
+            url TEXT UNIQUE,
+            title TEXT
+        );
+        """)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS InvertedIndex (
+            word_id INTEGER,
+            doc_id INTEGER,
+            PRIMARY KEY (word_id, doc_id)
+        );
+        """)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS Links (
+            from_doc_id INTEGER,
+            to_doc_id INTEGER,
+            PRIMARY KEY (from_doc_id, to_doc_id)
+        );
+        """)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS PageRank (
+            doc_id INTEGER PRIMARY KEY,
+            score REAL
+        );
+        """)
+
+        conn.commit()
+        conn.close()
+        print(f"Database '{db_path}' initialized with required tables.")
+            
+    def close_connection(self):
+        if self.db_conn:
+            self.db_conn.close()
+            print("Database connection closed.")
+            
+    def __del__(self):
+        self.close_connection()
+
+    def __init__(self, db_conn = None, url_file = None, db_path="crawler_data.db"):
         """Initialize the crawler with a connection to the database to populate
         and with the file containing the list of seed URLs to begin indexing."""
+        if db_conn is None:
+            self.db_conn = sqlite3.connect(db_path)
+            print(f"Database connection initialized at {db_path}.")
+        else:
+            self.db_conn = db_conn
+        self.initialize_database(db_path=db_path)
         self._url_queue = []
         self._doc_id_cache = {}
         self._word_id_cache = {}
+        
+        
 
         self._lexicon = {}
         self._inverted_index = {}
         self._document_index = {}
+        self._links = {}
 
         # functions to call when entering and exiting specific tags
         self._enter = defaultdict(lambda *a, **ka: self._visit_ignore)
@@ -255,6 +323,8 @@ class crawler(object):
             finally:
                 if socket:
                     socket.close()
+        self.page_rank()
+        
 
     # # TODO remove me in real version
     # def _mock_insert_document(self, url):
@@ -274,47 +344,76 @@ class crawler(object):
     #     return ret_id
 
     def word_id(self, word):
-        """Get the word id of some specific word."""
+        """Get the word ID of a specific word and update the inverted index."""
+        cur = self.db_conn.cursor()
+        
+        # Check if the word exists in the Lexicon
+        cur.execute("SELECT id FROM Lexicon WHERE word = ?", (word,))
+        result = cur.fetchone()
+        
+        if result:
+            word_id = result[0]
+        else:
+            # Insert the new word into the Lexicon
+            cur.execute("INSERT INTO Lexicon (word) VALUES (?)", (word,))
+            self.db_conn.commit()
+            word_id = cur.lastrowid
 
-        # TODO: 1) add the word to the lexicon, if that fails, then the
-        #          word is in the lexicon
-        #       2) query the lexicon for the id assigned to this word,
-        #          store it in the word id cache, and return the id.
-
-        if word in self._lexicon:
-            word_id = self._lexicon[word]        
-        else: 
-            word_id = self._mock_next_word_id
-            self._mock_next_word_id +=1
-            self._lexicon[word] = word_id
-            self._word_id_cache[word_id] = word
-
+        # Add the word ID to the inverted index
         if word_id not in self._inverted_index:
             self._inverted_index[word_id] = set()
         self._inverted_index[word_id].add(self._curr_doc_id)
 
+        # Update the database inverted index
+        cur.execute("INSERT OR IGNORE INTO InvertedIndex (word_id, doc_id) VALUES (?, ?)",
+                    (word_id, self._curr_doc_id))
+        self.db_conn.commit()
+
         return word_id
 
-    def document_id(self, url):
-        """Get the document id for some url."""
-        # TODO: just like word id cache, but for documents. if the document
-        #       doesn't exist in the db then only insert the url and leave
-        #       the rest to their defaults.
 
-        if url in self._doc_id_cache:
-            doc_id = self._doc_id_cache[url]
+    def document_id(self, url):
+        """Get the document ID for a specific URL."""
+        cur = self.db_conn.cursor()
+        
+        # Check if the URL exists in the DocumentIndex
+        cur.execute("SELECT id FROM DocumentIndex WHERE url = ?", (url,))
+        result = cur.fetchone()
+        
+        if result:
+            doc_id = result[0]
         else:
-            doc_id = self._mock_next_doc_id
-            self._mock_next_doc_id += 1
-            self._doc_id_cache[url] = doc_id
-            self._document_index[doc_id] = url
-        
+            # Insert the new document into the DocumentIndex
+            cur.execute("INSERT INTO DocumentIndex (url) VALUES (?)", (url,))
+            self.db_conn.commit()
+            doc_id = cur.lastrowid
+
+        # Cache the document ID
+        self._doc_id_cache[url] = doc_id
+        self._document_index[doc_id] = url
+
         return doc_id
+
         
+    # def add_link(self, from_doc_id, to_doc_id):
+    #     """Add a link into the database, or increase the number of links between
+    #     two pages in the database."""
+    #     # TODO
+    
     def add_link(self, from_doc_id, to_doc_id):
-        """Add a link into the database, or increase the number of links between
-        two pages in the database."""
-        # TODO
+        """Add a link into the database or increment the number of links between two pages."""
+        cur = self.db_conn.cursor()
+        
+        # Insert the link into the Links table
+        cur.execute("INSERT OR IGNORE INTO Links (from_doc_id, to_doc_id) VALUES (?, ?)",
+                    (from_doc_id, to_doc_id))
+        self.db_conn.commit()
+        
+        # Update the in-memory links structure
+        if from_doc_id not in self._links:
+            self._links[from_doc_id] = set()
+        self._links[from_doc_id].add(to_doc_id)
+
 
     def _visit_title(self, elem):
         """Called when visiting the <title> tag."""
@@ -325,6 +424,7 @@ class crawler(object):
 
     def _visit_a(self, elem):
         """Called when visiting <a> tags."""
+        # print("    a tag=" + repr(elem))
 
         dest_url = self._fix_url(self._curr_url, attr(elem, "href"))
 
@@ -359,10 +459,75 @@ class crawler(object):
         for word_id, doc_ids in self._inverted_index.items():
             resolved_index[self._word_id_cache[word_id]] = [self._document_index[doc_id] for doc_id in doc_ids]
         return resolved_index
+        
+    def page_rank(self, num_iterations=20, initial_pr=1.0):
+        from collections import defaultdict
+        import numpy as np
+
+        cur = self.db_conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM Links")
+        count = cur.fetchone()[0]
+        print(f"Number of entries in 'Links': {count}")
+
+        page_rank = defaultdict(lambda: float(initial_pr))
+        num_outgoing_links = defaultdict(float)
+        incoming_link_sets = defaultdict(set)
+        incoming_links = defaultdict(lambda: np.array([]))
+        damping_factor = 0.85
+
+        # Step 1: Fetch links from the database
+        cur.execute("SELECT from_doc_id, to_doc_id FROM Links")
+        links = cur.fetchall()
+
+        # Step 2: Collect the number of outbound links and the set of all incoming documents
+        for from_id, to_id in links:
+            num_outgoing_links[int(from_id)] += 1.0
+            incoming_link_sets[to_id].add(int(from_id))
+
+        # Begin PR hack:
+        # Allow incoming links that don't have any outgoing links to still be ranked
+        for _, to_id in links:
+            if to_id not in num_outgoing_links:
+                num_outgoing_links[int(to_id)] = 1.0
+        # End PR hack
+
+        # Step 3: Convert each set of incoming links into a numpy array
+        for doc_id in incoming_link_sets:
+            incoming_links[doc_id] = np.array([from_doc_id for from_doc_id in incoming_link_sets[doc_id]])
+
+        num_documents = float(len(num_outgoing_links))
+        lead = (1.0 - damping_factor) / num_documents
+        partial_PR = np.vectorize(lambda doc_id: page_rank[doc_id] / num_outgoing_links[doc_id])
+
+        # Step 4: Perform PageRank iterations
+        for _ in range(num_iterations):
+            for doc_id in num_outgoing_links:
+                tail = 0.0
+                if len(incoming_links[doc_id]):
+                    tail = damping_factor * partial_PR(incoming_links[doc_id]).sum()
+                page_rank[doc_id] = lead + tail
+
+        # Step 5: Store PageRank scores in the database
+        for doc_id, score in page_rank.items():
+            # Ensure proper data types
+            cur.execute("""
+            INSERT OR REPLACE INTO PageRank (doc_id, score) VALUES (?, ?)
+            """, (int(doc_id), float(score)))
+        self.db_conn.commit()
+
+        print("PageRank scores updated in the database.")
+        return page_rank
+
+
 
 
 if __name__ == "__main__":
-    bot = crawler(None, "urls.txt")
+    bot = crawler(url_file= "urls.txt")
     bot.crawl(depth=1)
-    print(bot.get_resolved_inverted_index())
+    # print(bot.get_resolved_inverted_index())
     # print(bot.get_inverted_index())
+    
+    cur = bot.db_conn.cursor()
+    cur.execute("SELECT * FROM PageRank ORDER BY score DESC LIMIT 10")
+    for row in cur.fetchall():
+        print(f"Doc ID: {row[0]}, PageRank: {row[1]}")

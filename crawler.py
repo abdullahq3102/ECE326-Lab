@@ -453,12 +453,21 @@ class crawler(object):
         return self._inverted_index
     
     def get_resolved_inverted_index(self):
-        """Get the inverted index with word ids replaced with words and all of its urls."""
-        # Uses word id cache instead fo lexicon because lexicon is for searching via frontend(word -> word id) and word_id_cache is for searching via backend(word id -> word)
+        """Generate a resolved inverted index with human-readable words and URLs."""
         resolved_index = {}
-        for word_id, doc_ids in self._inverted_index.items():
-            resolved_index[self._word_id_cache[word_id]] = [self._document_index[doc_id] for doc_id in doc_ids]
+        cur = self.db_conn.cursor()
+        cur.execute("SELECT word_id, doc_id FROM InvertedIndex")
+        inverted_index = cur.fetchall()
+
+        for word_id, doc_id in inverted_index:
+            word = self._word_id_cache.get(word_id, f"UnknownWord({word_id})")
+            url = self._document_index.get(doc_id, f"UnknownURL({doc_id})")
+            if word not in resolved_index:
+                resolved_index[word] = []
+            resolved_index[word].append(url)
+
         return resolved_index
+
         
     def page_rank(self, num_iterations=20, initial_pr=1.0):
         from collections import defaultdict
@@ -475,23 +484,17 @@ class crawler(object):
         incoming_links = defaultdict(lambda: np.array([]))
         damping_factor = 0.85
 
-        # Step 1: Fetch links from the database
         cur.execute("SELECT from_doc_id, to_doc_id FROM Links")
         links = cur.fetchall()
 
-        # Step 2: Collect the number of outbound links and the set of all incoming documents
         for from_id, to_id in links:
             num_outgoing_links[int(from_id)] += 1.0
             incoming_link_sets[to_id].add(int(from_id))
 
-        # Begin PR hack:
-        # Allow incoming links that don't have any outgoing links to still be ranked
         for _, to_id in links:
             if to_id not in num_outgoing_links:
                 num_outgoing_links[int(to_id)] = 1.0
-        # End PR hack
 
-        # Step 3: Convert each set of incoming links into a numpy array
         for doc_id in incoming_link_sets:
             incoming_links[doc_id] = np.array([from_doc_id for from_doc_id in incoming_link_sets[doc_id]])
 
@@ -499,7 +502,6 @@ class crawler(object):
         lead = (1.0 - damping_factor) / num_documents
         partial_PR = np.vectorize(lambda doc_id: page_rank[doc_id] / num_outgoing_links[doc_id])
 
-        # Step 4: Perform PageRank iterations
         for _ in range(num_iterations):
             for doc_id in num_outgoing_links:
                 tail = 0.0
@@ -507,7 +509,6 @@ class crawler(object):
                     tail = damping_factor * partial_PR(incoming_links[doc_id]).sum()
                 page_rank[doc_id] = lead + tail
 
-        # Step 5: Store PageRank scores in the database
         for doc_id, score in page_rank.items():
             # Ensure proper data types
             cur.execute("""

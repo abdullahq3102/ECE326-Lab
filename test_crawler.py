@@ -1,96 +1,130 @@
 import unittest
-from unittest.mock import patch, MagicMock
+import os
+import sqlite3
 from crawler import crawler
 
 class TestCrawler(unittest.TestCase):
-
     def setUp(self):
-        # Set up a crawler instance with a mock URL file
-        self.crawler = crawler(None, 'mock_urls.txt')
-        self.crawler._curr_doc_id = 1  # Mock the current document id
+        """Set up a temporary database and URL file for testing."""
+        self.db_path = "test_crawler_data.db"
+        self.url_file = "test_urls.txt"
 
-    @patch('crawler.urlopen')
-    def test_crawling(self, mock_urlopen):
-        # Mock the content of the page that would be crawled
-        mock_html = """
-        <html>
-        <head><title>Test Page</title></head>
-        <body>
-            <h1>Sample Heading</h1>
-            <p>This is a test page with some content.</p>
-        </body>
-        </html>
-        """
-        mock_urlopen.return_value.read.return_value = mock_html.encode('utf-8')
+        # Create a temporary URL file
+        with open(self.url_file, "w") as f:
+            f.write("http://example.com\nhttp://test.com")
 
-        # Call the crawl method and assert it processes the document correctly
-        self.crawler._url_queue = [('http://example.com', 0)]
-        self.crawler.crawl(depth=1)
+        self.crawler = crawler(db_path=self.db_path, url_file=self.url_file)
+        self.crawler.initialize_database(self.db_path)
 
-        # Assert that the document index contains the URL
-        self.assertEqual(self.crawler._document_index[1], 'http://example.com')
+    def tearDown(self):
+        """Remove the temporary database and URL file."""
+        self.crawler.close_connection()
+        if os.path.exists(self.db_path):
+            os.remove(self.db_path)
+        if os.path.exists(self.url_file):
+            os.remove(self.url_file)
 
-    def test_word_id_adding(self):
-        # Test adding words to the lexicon and word_id_cache
-        word = 'test'
+    def test_initialize_database(self):
+        """Test if the database initializes properly with the required tables."""
+        conn = sqlite3.connect(self.db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = {row[0] for row in cur.fetchall()}
+        expected_tables = {
+            "Lexicon",
+            "DocumentIndex",
+            "InvertedIndex",
+            "Links",
+            "PageRank"
+        }
+        self.assertTrue(expected_tables.issubset(tables))
+        conn.close()
+
+    def test_word_id(self):
+        """Test if words are correctly added to the Lexicon and the inverted index."""
+        word = "test"
         word_id = self.crawler.word_id(word)
-        
-        # Ensure that the word was added to the lexicon and has an ID
-        self.assertIn(word, self.crawler._lexicon)
-        self.assertEqual(self.crawler._lexicon[word], word_id)
-        self.assertEqual(self.crawler._word_id_cache[word_id], word)
 
-    def test_document_id_adding(self):
-        # Test adding URLs to the document index
-        url = 'http://example.com'
+        # Check if the word exists in the Lexicon
+        cur = self.crawler.db_conn.cursor()
+        cur.execute("SELECT id, word FROM Lexicon WHERE word = ?", (word,))
+        result = cur.fetchone()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], word_id)
+        self.assertEqual(result[1], word)
+
+    def test_document_id(self):
+        """Test if URLs are correctly added to the DocumentIndex."""
+        url = "http://example.com"
         doc_id = self.crawler.document_id(url)
 
-        # Ensure that the document was added and has a unique ID
-        self.assertIn(url, self.crawler._doc_id_cache)
-        self.assertEqual(self.crawler._doc_id_cache[url], doc_id)
-        self.assertEqual(self.crawler._document_index[doc_id], url)
+        # Check if the URL exists in the DocumentIndex
+        cur = self.crawler.db_conn.cursor()
+        cur.execute("SELECT id, url FROM DocumentIndex WHERE url = ?", (url,))
+        result = cur.fetchone()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], doc_id)
+        self.assertEqual(result[1], url)
 
-    def test_inverted_index(self):
-        # Test adding words to the inverted index
-        word1 = 'test'
-        word2 = 'crawler'
-        self.crawler._curr_doc_id = 1  # Set the current document ID
-        
-        # Add words
-        word1_id = self.crawler.word_id(word1)
-        word2_id = self.crawler.word_id(word2)
+    def test_add_link(self):
+        """Test if links are correctly added to the Links table."""
+        from_doc_id = self.crawler.document_id("http://example1.com")
+        to_doc_id = self.crawler.document_id("http://example2.com")
+        self.crawler.add_link(from_doc_id, to_doc_id)
 
-        # Check that both words were added to the inverted index
-        self.assertIn(word1_id, self.crawler._inverted_index)
-        self.assertIn(word2_id, self.crawler._inverted_index)
-        self.assertIn(1, self.crawler._inverted_index[word1_id])
-        self.assertIn(1, self.crawler._inverted_index[word2_id])
+        # Check if the link exists in the Links table
+        cur = self.crawler.db_conn.cursor()
+        cur.execute("SELECT from_doc_id, to_doc_id FROM Links WHERE from_doc_id = ? AND to_doc_id = ?",
+                    (from_doc_id, to_doc_id))
+        result = cur.fetchone()
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], from_doc_id)
+        self.assertEqual(result[1], to_doc_id)
 
-    def test_resolved_inverted_index(self):
-        # Manually add some entries to the inverted index
-        word1 = 'test'
-        word2 = 'crawler'
-        self.crawler._curr_doc_id = 1  # Set the current document ID
-        
-        # Add words
-        word1_id = self.crawler.word_id(word1)
-        word2_id = self.crawler.word_id(word2)        
-        self.crawler._inverted_index = {1: {1}, 2: {1}}
-        self.crawler._document_index = {1: 'http://example.com'}
+    def test_page_rank(self):
+        """Test if PageRank values are computed and stored correctly."""
+        # Add some documents and links
+        doc1 = self.crawler.document_id("http://example1.com")
+        doc2 = self.crawler.document_id("http://example2.com")
+        doc3 = self.crawler.document_id("http://example3.com")
+        self.crawler.add_link(doc1, doc2)
+        self.crawler.add_link(doc2, doc3)
+        self.crawler.add_link(doc3, doc1)
 
-        # Call the resolved inverted index function
-        resolved_index = self.crawler.get_resolved_inverted_index()
+        # Compute PageRank
+        page_ranks = self.crawler.page_rank()
 
-        # Check that the resolved index contains the correct mappings
-        expected = {
-            'test': ['http://example.com'],
-            'crawler': ['http://example.com']
-        }
+        # Verify PageRank values are stored in the database
+        cur = self.crawler.db_conn.cursor()
+        cur.execute("SELECT doc_id, score FROM PageRank")
+        results = cur.fetchall()
+        self.assertEqual(len(results), 3)
+        for doc_id, score in results:
+            self.assertIn(doc_id, page_ranks)
+            self.assertAlmostEqual(page_ranks[doc_id], score, places=4)
 
-        print("Resolved Index:", resolved_index)
+    def test_get_resolved_inverted_index(self):
+      """Test if the resolved inverted index is correctly generated."""
+      # Add test data to Lexicon and DocumentIndex
+      word_id = self.crawler.word_id("example")
+      doc_id = self.crawler.document_id("http://example.com")
+
+      # Populate the inverted index
+      cur = self.crawler.db_conn.cursor()
+      cur.execute("INSERT INTO InvertedIndex (word_id, doc_id) VALUES (?, ?)", (word_id, doc_id))
+      self.crawler.db_conn.commit()
+
+      # Ensure caches are populated
+      self.crawler._word_id_cache[word_id] = "example"
+      self.crawler._document_index[doc_id] = "http://example.com"
+
+      # Call the function
+      resolved_index = self.crawler.get_resolved_inverted_index()
+
+      # Assert the results
+      self.assertIn("example", resolved_index)
+      self.assertIn("http://example.com", resolved_index["example"])
 
 
-        self.assertEqual(resolved_index, expected)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -1,3 +1,4 @@
 oauthSecrets.json
 rootkey.csv
 /*.pem
+/__pycache__/

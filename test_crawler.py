@@ -9,7 +9,6 @@ class TestCrawler(unittest.TestCase):
         self.db_path = "test_crawler_data.db"
         self.url_file = "test_urls.txt"
 
-        # Create a temporary URL file
         with open(self.url_file, "w") as f:
             f.write("http://example.com\nhttp://test.com")
 
@@ -45,7 +44,6 @@ class TestCrawler(unittest.TestCase):
         word = "test"
         word_id = self.crawler.word_id(word)
 
-        # Check if the word exists in the Lexicon
         cur = self.crawler.db_conn.cursor()
         cur.execute("SELECT id, word FROM Lexicon WHERE word = ?", (word,))
         result = cur.fetchone()
@@ -58,7 +56,6 @@ class TestCrawler(unittest.TestCase):
         url = "http://example.com"
         doc_id = self.crawler.document_id(url)
 
-        # Check if the URL exists in the DocumentIndex
         cur = self.crawler.db_conn.cursor()
         cur.execute("SELECT id, url FROM DocumentIndex WHERE url = ?", (url,))
         result = cur.fetchone()
@@ -72,7 +69,6 @@ class TestCrawler(unittest.TestCase):
         to_doc_id = self.crawler.document_id("http://example2.com")
         self.crawler.add_link(from_doc_id, to_doc_id)
 
-        # Check if the link exists in the Links table
         cur = self.crawler.db_conn.cursor()
         cur.execute("SELECT from_doc_id, to_doc_id FROM Links WHERE from_doc_id = ? AND to_doc_id = ?",
                     (from_doc_id, to_doc_id))
@@ -83,7 +79,6 @@ class TestCrawler(unittest.TestCase):
 
     def test_page_rank(self):
         """Test if PageRank values are computed and stored correctly."""
-        # Add some documents and links
         doc1 = self.crawler.document_id("http://example1.com")
         doc2 = self.crawler.document_id("http://example2.com")
         doc3 = self.crawler.document_id("http://example3.com")
@@ -91,10 +86,8 @@ class TestCrawler(unittest.TestCase):
         self.crawler.add_link(doc2, doc3)
         self.crawler.add_link(doc3, doc1)
 
-        # Compute PageRank
         page_ranks = self.crawler.page_rank()
 
-        # Verify PageRank values are stored in the database
         cur = self.crawler.db_conn.cursor()
         cur.execute("SELECT doc_id, score FROM PageRank")
         results = cur.fetchall()
@@ -105,23 +98,18 @@ class TestCrawler(unittest.TestCase):
 
     def test_get_resolved_inverted_index(self):
       """Test if the resolved inverted index is correctly generated."""
-      # Add test data to Lexicon and DocumentIndex
       word_id = self.crawler.word_id("example")
       doc_id = self.crawler.document_id("http://example.com")
 
-      # Populate the inverted index
       cur = self.crawler.db_conn.cursor()
       cur.execute("INSERT INTO InvertedIndex (word_id, doc_id) VALUES (?, ?)", (word_id, doc_id))
       self.crawler.db_conn.commit()
 
-      # Ensure caches are populated
       self.crawler._word_id_cache[word_id] = "example"
       self.crawler._document_index[doc_id] = "http://example.com"
 
-      # Call the function
       resolved_index = self.crawler.get_resolved_inverted_index()
 
-      # Assert the results
       self.assertIn("example", resolved_index)
       self.assertIn("http://example.com", resolved_index["example"])
 

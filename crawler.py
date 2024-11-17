@@ -376,19 +376,16 @@ class crawler(object):
         """Get the document ID for a specific URL."""
         cur = self.db_conn.cursor()
         
-        # Check if the URL exists in the DocumentIndex
         cur.execute("SELECT id FROM DocumentIndex WHERE url = ?", (url,))
         result = cur.fetchone()
         
         if result:
             doc_id = result[0]
         else:
-            # Insert the new document into the DocumentIndex
             cur.execute("INSERT INTO DocumentIndex (url) VALUES (?)", (url,))
             self.db_conn.commit()
             doc_id = cur.lastrowid
 
-        # Cache the document ID
         self._doc_id_cache[url] = doc_id
         self._document_index[doc_id] = url
 
@@ -510,7 +507,6 @@ class crawler(object):
                 page_rank[doc_id] = lead + tail
 
         for doc_id, score in page_rank.items():
-            # Ensure proper data types
             cur.execute("""
             INSERT OR REPLACE INTO PageRank (doc_id, score) VALUES (?, ?)
             """, (int(doc_id), float(score)))

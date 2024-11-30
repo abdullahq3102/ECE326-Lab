@@ -158,12 +158,11 @@ def results():
                 current_page=page,
                 total_pages=0,
                 user_email=session.get('user_email'),
-                processing_time=0,  # No processing time for math expressions
+                processing_time=0,
                 corrections_made=False,
                 corrected_query=None
             )
         except Exception as e:
-            # Handle errors in math expression evaluation gracefully
             math_result = None
 
 

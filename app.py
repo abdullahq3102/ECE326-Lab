@@ -124,66 +124,71 @@ def logout():
     session.delete() 
     redirect('/')
     
+def is_math_expression(query):
+    """Check if the query is a valid math expression, excluding single numbers."""
+    try:
+        result = eval(query)
+        if isinstance(result, (int, float)) and query.isdigit():
+            return False
+        return True
+    except (SyntaxError, NameError, ZeroDivisionError):
+        return False
+    
 @route('/results')
 def results():
     session = request.environ.get('beaker.session')
     query = request.query.keywords
-    page = int(request.query.page or 1)  # Default to page 1 if no page parameter
+    page = int(request.query.page or 1) 
 
     if not query:
         redirect('/')
 
-    # Initialize math_result as None
+
     math_result = None
 
-    # Check if the query is a mathematical expression
-    math_pattern = r'^[\d\s\+\-\*/\(\)\.]+$'  # Regex to allow valid math expressions
-    if re.match(math_pattern, query):
+    if is_math_expression(query):
         try:
-            math_result = eval(query)  # Compute the math result
+            math_result = eval(query)
+            return template(
+                'templates/results',
+                query=query,
+                math_result=math_result,
+                results=[],
+                total_results=0,
+                current_page=page,
+                total_pages=0,
+                user_email=session.get('user_email'),
+                processing_time=0,  # No processing time for math expressions
+                corrections_made=False,
+                corrected_query=None
+            )
         except Exception as e:
-            math_result = None  # If eval fails, ignore it
+            # Handle errors in math expression evaluation gracefully
+            math_result = None
 
-    # If it's a math expression, show the result without querying the database
-    if math_result is not None:
-        processing_time = 0.0  # No need for heavy processing
-        return template(
-            'templates/results',
-            query=query,
-            math_result=math_result,
-            results=[],
-            total_results=0,
-            current_page=1,
-            total_pages=1,
-            processing_time=processing_time,
-            user_email=session.get('user_email'),
-            corrections_made=False,
-            corrected_query=None,
-        )
 
-    # Spell correction
     corrected_query = ' '.join(spell.correction(word) for word in query.split())
     corrections_made = corrected_query != query
 
-    # Check if cached results exist for the same query
+
     if session.get('last_query') == query:
         start_time = time.time()
         print("Using cached results")
         all_results = session.get('cached_results', [])
-        processing_time = time.time() - start_time  # Stop timing
+        processing_time = time.time() - start_time 
     else:
         print("Fetching new results")
-        start_time = time.time()  # Start timing
+        start_time = time.time() 
         keywords = [word.lower() for word in query.split()]
         cur = db_conn.cursor()
 
-        # Get all document IDs for the given keywords
+    
         doc_scores = {}
         for word in keywords:
             cur.execute("SELECT id FROM Lexicon WHERE word = ?", (word,))
             word_id_row = cur.fetchone()
             if not word_id_row:
-                continue  # Skip this word if it doesn't exist in the lexicon
+                continue 
 
             word_id = word_id_row['id']
             cur.execute("SELECT doc_id FROM InvertedIndex WHERE word_id = ?", (word_id,))
@@ -199,10 +204,10 @@ def results():
                 else:
                     doc_scores[doc_id] = score
 
-        # Sort documents by their aggregated scores (descending)
+    
         sorted_doc_scores = sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)
 
-        # Fetch document details for the sorted document IDs
+    
         all_results = []
         for doc_id, score in sorted_doc_scores:
             cur.execute("SELECT url, title FROM DocumentIndex WHERE id = ?", (doc_id,))
@@ -214,15 +219,15 @@ def results():
                     'score': score
                 })
 
-        processing_time = time.time() - start_time  # Stop timing
+        processing_time = time.time() - start_time 
 
-        # Cache results in the session
+    
         session['last_query'] = query
         session['cached_results'] = all_results
         session['processing_time'] = processing_time
         session.save()
 
-    # Pagination logic
+
     results_per_page = 10
     total_results = len(all_results)
     total_pages = (total_results + results_per_page - 1) // results_per_page
@@ -238,7 +243,7 @@ def results():
         query=query,
         corrected_query=corrected_query,
         corrections_made=corrections_made,
-        math_result=math_result,  # Ensure math_result is always passed
+        math_result=math_result, 
         results=results,
         total_results=total_results,
         current_page=page,

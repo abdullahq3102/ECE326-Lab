@@ -5,8 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Results</title>
     <link rel="icon" href="/static/QW_logo.jpg" type="image/jpeg">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .search-form {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .search-form input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            width: 300px;
+        }
+        .search-form button {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
 </head>
 <body>
+    <!-- Search Form -->
+    <div class="search-form">
+        <form action="/results" method="get">
+            <input type="text" name="keywords" placeholder="Enter search query" value="{{query}}">
+            <button type="submit">Search</button>
+        </form>
+    </div>
+
     <!-- Logout Button for Logged-In Users -->
     % if user_email:
         <p>Logged in as: {{user_email}} <a href="/logout">Logout</a></p>
@@ -19,8 +45,6 @@
             The result of the mathematical expression: <strong>{{query}}={{math_result}}</strong>
         </p>
     %else:
-
-
         % if corrections_made:
             <p>Did you mean: <a href="/results?keywords={{corrected_query}}">{{corrected_query}}</a>?</p>
         % end
@@ -58,6 +82,6 @@
         %end
     % end
 
-    <a href="/">Back to Search</a>
+    <a href="/">Back to Home</a>
 </body>
 </html>

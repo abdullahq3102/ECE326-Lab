@@ -3,28 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Search Engine</title>
+    <title>QW Search Engine</title>
     <link rel="icon" href="/static/QW_logo.jpg" type="image/jpeg">
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        .logo img {
+            height: 250px; /* Larger size for better visibility */
+        }
+        form {
+            margin-top: 20px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            width: 300px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
 </head>
 <body>
-    <h1>
-        <img src="/static/QW_logo.jpg" alt="QW Logo" style="height: 50px; vertical-align:middle;">
-        Qureshi-Wang Search Engine
-    </h1>
+    <!-- Logo -->
+    <div class="logo">
+        <img src="/static/search-gif.gif" alt="QW Logo">    </div>
 
     <!-- Logout Button for Logged-In Users -->
     % if user_email:
         <p>Welcome, {{user_email}}! <a href="/logout">Logout</a></p>
-    % end
-
-    <!-- Login or Recent Searches Section -->
-    % if user_email:
-        <h2>Your Recent Searches</h2>
-        <ul>
-            % for search in history:
-            <li>{{search}}</li>
-            % end
-        </ul>
     % else:
         <p><a href="/login">Login with Google</a></p>
     % end

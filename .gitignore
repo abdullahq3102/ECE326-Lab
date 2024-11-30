@@ -1,4 +1,6 @@
 oauthSecrets.json
 rootkey.csv
+rootkey_old.csv
+rootkey_main.csv
 /*.pem
 /__pycache__/

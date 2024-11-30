@@ -10,7 +10,7 @@ client = boto3.client('ec2', region_name='us-east-1')
 
 def create_security_group():
     
-    groupName = 'ece326-group5'
+    groupName = 'ece326-group'
     try:
         response = client.describe_security_groups(
             Filters=[{'Name': 'group-name', 'Values': [groupName]}]
@@ -82,6 +82,7 @@ def launch_instance(security_group_id):
     instance.wait_until_running()
     instance.reload()
     print(f"EC2 instance launched. Public IP: {instance.public_ip_address}")
+    print(f"Instance ID: {instance.id}")
     return instance.public_ip_address, instance
 
 

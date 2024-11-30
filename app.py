@@ -271,5 +271,5 @@ def error404(error):
 
 
 if __name__ == "__main__":
-    # run(app=app, host='0.0.0.0', port=8082, debug=True)0
-    run(app=app, host='localhost', port=8082, debug=True)
+    run(app=app, host='0.0.0.0', port=8082, debug=True)
+    # run(app=app, host='localhost', port=8082, debug=True)

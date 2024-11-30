@@ -8,7 +8,8 @@ import os
 import bottle
 import sqlite3
 import time 
-from spellchecker import SpellChecker  
+from spellchecker import SpellChecker
+import re
 spell = SpellChecker()
 
 db_conn = sqlite3.connect("crawler_data.db")
@@ -125,13 +126,40 @@ def logout():
     
 @route('/results')
 def results():
-    import time
     session = request.environ.get('beaker.session')
     query = request.query.keywords
     page = int(request.query.page or 1)  # Default to page 1 if no page parameter
 
     if not query:
         redirect('/')
+
+    # Initialize math_result as None
+    math_result = None
+
+    # Check if the query is a mathematical expression
+    math_pattern = r'^[\d\s\+\-\*/\(\)\.]+$'  # Regex to allow valid math expressions
+    if re.match(math_pattern, query):
+        try:
+            math_result = eval(query)  # Compute the math result
+        except Exception as e:
+            math_result = None  # If eval fails, ignore it
+
+    # If it's a math expression, show the result without querying the database
+    if math_result is not None:
+        processing_time = 0.0  # No need for heavy processing
+        return template(
+            'templates/results',
+            query=query,
+            math_result=math_result,
+            results=[],
+            total_results=0,
+            current_page=1,
+            total_pages=1,
+            processing_time=processing_time,
+            user_email=session.get('user_email'),
+            corrections_made=False,
+            corrected_query=None,
+        )
 
     # Spell correction
     corrected_query = ' '.join(spell.correction(word) for word in query.split())
@@ -143,8 +171,6 @@ def results():
         print("Using cached results")
         all_results = session.get('cached_results', [])
         processing_time = time.time() - start_time  # Stop timing
-
-        # processing_time = session.get('processing_time', 0.0)
     else:
         print("Fetching new results")
         start_time = time.time()  # Start timing
@@ -212,6 +238,7 @@ def results():
         query=query,
         corrected_query=corrected_query,
         corrections_made=corrections_made,
+        math_result=math_result,  # Ensure math_result is always passed
         results=results,
         total_results=total_results,
         current_page=page,

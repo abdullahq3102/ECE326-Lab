@@ -14,11 +14,16 @@
 
     <h1>Search Results for "{{query}}"</h1>
 
+    % if corrections_made:
+        <p>Did you mean: <a href="/results?keywords={{corrected_query}}">{{corrected_query}}</a>?</p>
+    % end
+
     % if not results:
         <p>No results found for "{{query}}".</p>
     % else:
         <p>Showing {{current_page}} of {{total_pages}} pages ({{total_results}} results).</p>
         <p>Search processed in {{'%.4f' % processing_time}} seconds.</p>
+
         <table border="1">
             <tr>
                 <th>Title</th>

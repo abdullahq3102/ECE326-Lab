@@ -9,7 +9,7 @@ import bottle
 import sqlite3
 import time 
 from spellchecker import SpellChecker  
-
+spell = SpellChecker()
 
 db_conn = sqlite3.connect("crawler_data.db")
 db_conn.row_factory = sqlite3.Row
@@ -125,29 +125,39 @@ def logout():
     
 @route('/results')
 def results():
+    import time
     session = request.environ.get('beaker.session')
     query = request.query.keywords
-    page = int(request.query.page or 1) 
+    page = int(request.query.page or 1)  # Default to page 1 if no page parameter
 
     if not query:
         redirect('/')
 
-    start_time = time.time()  
+    # Spell correction
+    corrected_query = ' '.join(spell.correction(word) for word in query.split())
+    corrections_made = corrected_query != query
 
+    # Check if cached results exist for the same query
     if session.get('last_query') == query:
+        start_time = time.time()
         print("Using cached results")
         all_results = session.get('cached_results', [])
+        processing_time = time.time() - start_time  # Stop timing
+
+        # processing_time = session.get('processing_time', 0.0)
     else:
         print("Fetching new results")
+        start_time = time.time()  # Start timing
         keywords = [word.lower() for word in query.split()]
         cur = db_conn.cursor()
 
+        # Get all document IDs for the given keywords
         doc_scores = {}
         for word in keywords:
             cur.execute("SELECT id FROM Lexicon WHERE word = ?", (word,))
             word_id_row = cur.fetchone()
             if not word_id_row:
-                continue
+                continue  # Skip this word if it doesn't exist in the lexicon
 
             word_id = word_id_row['id']
             cur.execute("SELECT doc_id FROM InvertedIndex WHERE word_id = ?", (word_id,))
@@ -163,8 +173,10 @@ def results():
                 else:
                     doc_scores[doc_id] = score
 
+        # Sort documents by their aggregated scores (descending)
         sorted_doc_scores = sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)
 
+        # Fetch document details for the sorted document IDs
         all_results = []
         for doc_id, score in sorted_doc_scores:
             cur.execute("SELECT url, title FROM DocumentIndex WHERE id = ?", (doc_id,))
@@ -176,12 +188,15 @@ def results():
                     'score': score
                 })
 
+        processing_time = time.time() - start_time  # Stop timing
+
+        # Cache results in the session
         session['last_query'] = query
         session['cached_results'] = all_results
+        session['processing_time'] = processing_time
         session.save()
 
-    processing_time = time.time() - start_time  
-
+    # Pagination logic
     results_per_page = 10
     total_results = len(all_results)
     total_pages = (total_results + results_per_page - 1) // results_per_page
@@ -195,6 +210,8 @@ def results():
     return template(
         'templates/results',
         query=query,
+        corrected_query=corrected_query,
+        corrections_made=corrections_made,
         results=results,
         total_results=total_results,
         current_page=page,

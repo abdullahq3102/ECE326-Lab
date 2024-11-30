@@ -7,3 +7,4 @@ httplib2
 paramiko
 scp
 awscli
+pyspellchecker

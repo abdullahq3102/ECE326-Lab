@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Results</title>
     <link rel="icon" href="/static/QW_logo.jpg" type="image/jpeg">
-
 </head>
 <body>
     <!-- Logout Button for Logged-In Users -->
@@ -19,6 +18,7 @@
         <p>No results found for "{{query}}".</p>
     % else:
         <p>Showing {{current_page}} of {{total_pages}} pages ({{total_results}} results).</p>
+        <p>Search processed in {{'%.4f' % processing_time}} seconds.</p>
         <table border="1">
             <tr>
                 <th>Title</th>
